@@ -39,8 +39,10 @@ public class JDBCASCIITableAware implements IASCIITableAware {
 
 	private List<ASCIITableHeader> headers = null;
 	private List<List<Object>> data = null;
+	private final int maxColumnWidth;
 	
-	public JDBCASCIITableAware(Connection connection, String sql) {
+	public JDBCASCIITableAware(Connection connection, String sql, int maxColumnWidth) {
+		this.maxColumnWidth = maxColumnWidth;
 		try {
 			Statement stmt = connection.createStatement();
 			ResultSet resultSet = stmt.executeQuery(sql);
@@ -50,7 +52,8 @@ public class JDBCASCIITableAware implements IASCIITableAware {
 		}
 	}
 	
-	public JDBCASCIITableAware(ResultSet resultSet) {
+	public JDBCASCIITableAware(ResultSet resultSet, int maxColumnWidth) {
+		this.maxColumnWidth = maxColumnWidth;
 		try {
 			init(resultSet);
 		} catch (SQLException e) {
@@ -67,17 +70,38 @@ public class JDBCASCIITableAware implements IASCIITableAware {
 			headers.add(new ASCIITableHeader(
 					resultSet.getMetaData().getColumnLabel(i + 1).toUpperCase()));
 		}
+
+
 		
 		//Populate data
 		data = new ArrayList<List<Object>>();
 		List<Object> rowData = null;
-		
+		List<Object> tempData;
 		while (resultSet.next()) {
+			boolean isAnyColumnMultiline = false;
+			boolean[] columnHasMutiline = new boolean[colCount];
 			
 			rowData = new ArrayList<Object>();
+			tempData = new ArrayList<Object>();
+
+			// figure out if any of the column values need to be split across
+			// multiple lines
 			for (int i = 0 ; i < colCount ; i ++) {
-				rowData.add(resultSet.getObject(i + 1));
+				Object object = resultSet.getObject(i + 1);
+				String val = String.valueOf(object);
+				if ( val.contains("\n") || val.length() > maxColumnWidth ) {
+					columnHasMutiline[i] = true;
+					isAnyColumnMultiline = true;
+				}
+				tempData.add(object);
 			}
+
+			if ( isAnyColumnMultiline ) {
+				// create extra as many extra rows as needed to format
+				// long strings and multiline string
+
+			}
+
 			data.add(rowData);
 		}//iterate rows
 		
