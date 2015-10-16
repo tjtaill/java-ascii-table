@@ -79,7 +79,7 @@ public class JDBCASCIITableAware implements IASCIITableAware {
 		List<Object> tempData;
 		while (resultSet.next()) {
 			boolean isAnyColumnMultiline = false;
-			boolean[] columnHasMutiline = new boolean[colCount];
+			boolean[] columnHasMultiline = new boolean[colCount];
 			
 			rowData = new ArrayList<Object>();
 			tempData = new ArrayList<Object>();
@@ -90,7 +90,7 @@ public class JDBCASCIITableAware implements IASCIITableAware {
 				Object object = resultSet.getObject(i + 1);
 				String val = String.valueOf(object);
 				if ( val.contains("\n") || val.length() > maxColumnWidth ) {
-					columnHasMutiline[i] = true;
+					columnHasMultiline[i] = true;
 					isAnyColumnMultiline = true;
 				}
 				tempData.add(object);
@@ -99,10 +99,20 @@ public class JDBCASCIITableAware implements IASCIITableAware {
 			if ( isAnyColumnMultiline ) {
 				// create extra as many extra rows as needed to format
 				// long strings and multiline string
+				int maxRows = 2;
+				for(int i = 0; i < colCount; i++) {
+					String val = String.valueOf( tempData.get(i) );
+					String[] vals = null;
+					if ( val.contains("\n") ) {
+						vals = val.split("\n");
+					} else if ( val.length() > maxColumnWidth ){
 
+					}
+				}
+
+			} else {
+				data.add(rowData);
 			}
-
-			data.add(rowData);
 		}//iterate rows
 		
 	}
