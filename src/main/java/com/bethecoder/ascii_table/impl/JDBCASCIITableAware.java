@@ -22,10 +22,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.bethecoder.ascii_table.ASCIITableHeader;
 import com.bethecoder.ascii_table.spec.IASCIITableAware;
+import org.apache.commons.lang3.text.WordUtils;
 
 /**
  * This class is useful to extract the header and row data from
@@ -82,7 +84,6 @@ public class JDBCASCIITableAware implements IASCIITableAware {
 			boolean[] columnHasMultiline = new boolean[colCount];
 			
 			rowData = new ArrayList<Object>();
-			tempData = new ArrayList<Object>();
 
 			// figure out if any of the column values need to be split across
 			// multiple lines
@@ -93,28 +94,63 @@ public class JDBCASCIITableAware implements IASCIITableAware {
 					columnHasMultiline[i] = true;
 					isAnyColumnMultiline = true;
 				}
-				tempData.add(object);
+				rowData.add(object);
 			}
 
 			if ( isAnyColumnMultiline ) {
 				// create extra as many extra rows as needed to format
 				// long strings and multiline string
 				int maxRows = 2;
+				Object[][] columns = new Object[colCount][];
 				for(int i = 0; i < colCount; i++) {
-					String val = String.valueOf( tempData.get(i) );
+					if ( ! columnHasMultiline[i] ) continue;
+
+					String val = String.valueOf( rowData.get(i) );
 					String[] vals = null;
 					if ( val.contains("\n") ) {
 						vals = val.split("\n");
-					} else if ( val.length() > maxColumnWidth ){
-
+					} else if ( val.length() > maxColumnWidth ) {
+						String wrap = WordUtils.wrap(val, maxColumnWidth);
+						vals = wrap.split("\n");
 					}
+					columns[i] = vals;
+					maxRows = Math.max(maxRows, vals.length);
 				}
 
+				for(int i = 0; i < colCount; i++) {
+					if ( columns[i] == null ) {
+						columns[i] = padedColumn( rowData.get(i), maxRows );
+					} else if ( columns[i].length < maxRows ) {
+						Object[] padedArray = new Object[maxRows];
+						for (int j = 0; j < maxRows; j++) {
+							Object val = j < columns[i].length ? columns[i][j] : "";
+							padedArray[j] = val;
+						}
+						columns[i] = padedArray;
+					}
+
+				}
+				for( int r = 0; r < maxRows; r++ ) {
+					rowData.clear();
+					for(int c = 0; c < colCount; c++) {
+						rowData.add( columns[c][r] );
+					}
+					data.add( rowData );
+				}
 			} else {
 				data.add(rowData);
 			}
 		}//iterate rows
 		
+	}
+
+	private Object[] padedColumn(Object columnVal, int maxRows) {
+		Object[] column = new Object[maxRows];
+		column[0] = columnVal;
+		for (int i = 1; i < maxRows; i++) {
+			column[i] = "";
+		}
+		return column;
 	}
 	
 	@Override
